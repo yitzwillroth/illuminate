@@ -40,6 +40,24 @@ class ContainerTest extends TestCase
         $this->assertSame('Taylor', $container->make('name'));
     }
 
+    public function testAbstractCanBeBoundFromConcreteReturnType()
+    {
+        $container = new Container;
+        $container->bind(function (): IContainerContractStub|ContainerImplementationStub {
+            return new ContainerImplementationStub;
+        });
+        $container->singleton(function (): ContainerConcreteStub {
+            return new ContainerConcreteStub;
+        });
+
+        $this->assertInstanceOf(
+            IContainerContractStub::class,
+            $container->make(IContainerContractStub::class)
+        );
+
+        $this->assertTrue($container->isShared(ContainerConcreteStub::class));
+    }
+
     public function testBindIfDoesntRegisterIfServiceAlreadyRegistered()
     {
         $container = new Container;
@@ -287,6 +305,18 @@ class ContainerTest extends TestCase
         $instance = $container->make(ContainerDefaultValueStub::class);
         $this->assertInstanceOf(ContainerConcreteStub::class, $instance->stub);
         $this->assertSame('taylor', $instance->default);
+    }
+
+    public function testResolutionOfClassWithDefaultParameters()
+    {
+        $container = new Container;
+        $instance = $container->make(ContainerClassWithDefaultValueStub::class);
+        $this->assertInstanceOf(ContainerConcreteStub::class, $instance->noDefault);
+        $this->assertSame(null, $instance->default);
+
+        $container->bind(ContainerConcreteStub::class, fn () => new ContainerConcreteStub);
+        $instance = $container->make(ContainerClassWithDefaultValueStub::class);
+        $this->assertInstanceOf(ContainerConcreteStub::class, $instance->default);
     }
 
     public function testBound()
@@ -762,6 +792,15 @@ class ContainerDefaultValueStub
     {
         $this->stub = $stub;
         $this->default = $default;
+    }
+}
+
+class ContainerClassWithDefaultValueStub
+{
+    public function __construct(
+        public ?ContainerConcreteStub $noDefault,
+        public ?ContainerConcreteStub $default = null,
+    ) {
     }
 }
 

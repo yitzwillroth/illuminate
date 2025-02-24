@@ -2,7 +2,6 @@
 
 namespace Illuminate\Tests\Integration\Concurrency;
 
-use Exception;
 use Illuminate\Concurrency\ProcessDriver;
 use Illuminate\Foundation\Application;
 use Illuminate\Process\Factory as ProcessFactory;
@@ -44,7 +43,7 @@ PHP);
 
     public function testRunHandlerProcessErrorCode()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(\Exception::class);
         $app = new Application(__DIR__);
         $processDriver = new ProcessDriver($app->make(ProcessFactory::class));
         $processDriver->run([
@@ -52,54 +51,36 @@ PHP);
         ]);
     }
 
-    public function testRunHandlerProcessErrorWithDefaultExceptionWithoutParam()
+    public function testOutputIsMappedToArrayInput()
     {
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('This is a different exception');
+        $input = [
+            'first' => fn () => 1 + 1,
+            'second' => fn () => 2 + 2,
+        ];
 
-        Concurrency::run([
-            fn () => throw new Exception(
-                'This is a different exception',
-            ),
-        ]);
-    }
+        $processOutput = Concurrency::driver('process')->run($input);
 
-    public function testRunHandlerProcessErrorWithCustomExceptionWithoutParam()
-    {
-        $this->expectException(ExceptionWithoutParam::class);
-        $this->expectExceptionMessage('Test');
-        Concurrency::run([
-            fn () => throw new ExceptionWithoutParam('Test'),
-        ]);
-    }
+        $this->assertIsArray($processOutput);
+        $this->assertArrayHasKey('first', $processOutput);
+        $this->assertArrayHasKey('second', $processOutput);
 
-    public function testRunHandlerProcessErrorWithCustomExceptionWithParam()
-    {
-        $this->expectException(ExceptionWithParam::class);
-        $this->expectExceptionMessage('API request to https://api.example.com failed with status 400 Bad Request');
-        Concurrency::run([
-            fn () => throw new ExceptionWithParam(
-                'https://api.example.com',
-                400,
-                'Bad Request',
-                'Invalid payload'
-            ),
-        ]);
-    }
-}
+        $syncOutput = Concurrency::driver('sync')->run($input);
 
-class ExceptionWithoutParam extends Exception
-{
-}
+        $this->assertIsArray($syncOutput);
+        $this->assertArrayHasKey('first', $syncOutput);
+        $this->assertArrayHasKey('second', $syncOutput);
 
-class ExceptionWithParam extends Exception
-{
-    public function __construct(
-        public string $uri,
-        public int $statusCode,
-        public string $reason,
-        public string|array $responseBody = '',
-    ) {
-        parent::__construct("API request to {$uri} failed with status $statusCode $reason");
+        /** As of now, the spatie/fork package is not included by default.
+         * $forkOutput = Concurrency::driver('fork')->run([
+         * 'first' => fn() => 1 + 1,
+         * 'second' => fn() => 2 + 2,
+         * ]);.
+         *
+         * $this->assertIsArray($forkOutput);
+         * $this->assertArrayHasKey('first', $forkOutput);
+         * $this->assertArrayHasKey('second', $forkOutput);
+         * $this->assertEquals(2, $forkOutput['first']);
+         * $this->assertEquals(4, $forkOutput['second']);
+         */
     }
 }

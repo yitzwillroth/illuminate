@@ -821,6 +821,12 @@ class RoutingUrlGeneratorTest extends TestCase
         $request = Request::create($url->signedRoute('foo').'?tampered=true');
 
         $this->assertFalse($url->hasValidSignature($request));
+
+        $request = Request::create($url->signedRoute('foo').'&tampered=true');
+
+        $this->assertTrue($url->hasValidSignature($request, ignoreQuery: ['tampered']));
+
+        $this->assertTrue($url->hasValidSignature($request, ignoreQuery: fn ($parameter) => $parameter === 'tampered'));
     }
 
     public function testSignedUrlImplicitModelBinding()
