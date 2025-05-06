@@ -47,7 +47,6 @@ class CommandMutexTest extends TestCase
         $this->command->setLaravel($app);
     }
 
-
     /** {@inheritdoc} */
     #[\Override]
     protected function tearDown(): void
